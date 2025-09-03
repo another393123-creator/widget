@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Store RAG Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600;1,700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07080a;
+      --panel: #0d0f14;
+      --panel-2: #0b0d12;
+      --muted: #9aa0a6;
+      --text: #e8eaed;
+      --italic: #d7e3ff;
+      --accent: #69e1ff;
+      --accent-2: #22d3ee;
+      --accent-3: #7c3aed;
+      --border: #21232b;
+      --glow: 0 0 40px rgba(105, 225, 255, .15), 0 0 80px rgba(124, 58, 237, .12);
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; background: radial-gradient(1200px 800px at 80% 10%, rgba(34, 211, 238, .08), transparent 50%),
+                              radial-gradient(1000px 700px at 10% 90%, rgba(124, 58, 237, .10), transparent 60%),
+                              var(--bg); color: var(--text);
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial;
+      -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 26px; }
+
+    header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .brand { display: flex; align-items: center; gap: 12px; font-weight: 700; letter-spacing: .3px; }
+    .logo {
+      width: 28px; height: 28px; border-radius: 8px; position: relative; overflow: hidden;
+      background: linear-gradient(135deg, rgba(34,211,238,.35), rgba(124,58,237,.35));
+      border: 1px solid #2a2f38; box-shadow: inset 0 0 20px rgba(255,255,255,.05), var(--glow);
+    }
+    .logo::after { content: ""; position: absolute; inset: 2px; border-radius: 6px; background: rgba(255,255,255,.03); }
+
+    .ghost-btn { background: transparent; color: var(--text); border: 1px solid var(--border); padding: 8px 12px; border-radius: 12px; cursor: pointer; }
+
+    /* Cards */
+    .card { background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 20px 80px rgba(0,0,0,.45); }
+
+    /* Views */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* Landing */
+    .landing { padding: 46px; display: grid; grid-template-columns: 1.1fr .9fr; gap: 22px; align-items: center; }
+    .hero-title { font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 700; font-size: clamp(36px, 6vw, 76px); line-height: 1; letter-spacing: .2px; margin: 0 0 10px; background: linear-gradient(90deg, #e8f4ff, #a7f0ff, #bfa7ff); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: 0 0 30px rgba(255,255,255,.06); }
+    .hero-sub { color: var(--muted); font-size: 14px; margin-bottom: 18px; }
+    .hero-para { font-family: 'Cormorant Garamond', serif; font-style: italic; color: var(--italic); font-size: clamp(16px, 1.8vw, 22px); line-height: 1.5; opacity: .95; }
+    .cta-row { display: flex; gap: 12px; margin-top: 20px; }
+    .cta {
+      background: linear-gradient(135deg, var(--accent), var(--accent-3)); color: #071019; font-weight: 700; padding: 12px 18px; border-radius: 14px; border: none; cursor: pointer;
+      box-shadow: 0 10px 30px rgba(34, 211, 238, .35), 0 10px 40px rgba(124, 58, 237, .25);
+    }
+
+    .device { position: relative; height: 420px; display: grid; place-items: center; }
+    .device .frame { width: 90%; height: 88%; border-radius: 22px; border: 1px solid var(--border); background: linear-gradient(180deg, #0f1219, #0a0c11); box-shadow: var(--glow); position: relative; overflow: hidden; }
+    .device .glow1, .device .glow2 { position: absolute; border-radius: 50%; filter: blur(28px); opacity: .25; }
+    .device .glow1 { width: 160px; height: 160px; background: #22d3ee; top: 10%; left: 8%; animation: float 8s ease-in-out infinite; }
+    .device .glow2 { width: 220px; height: 220px; background: #7c3aed; bottom: 8%; right: 6%; animation: float 10s ease-in-out infinite reverse; }
+    @keyframes float { 0%,100%{ transform: translateY(0)} 50%{ transform: translateY(-8px)} }
+
+    /* Widget picker */
+    .picker { padding: 26px; }
+    .picker h3 { margin: 0 0 6px; font-size: 18px; color: #c8d0d8; font-weight: 700; letter-spacing: .3px; }
+    .picker p { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .widget-card { position: relative; border: 1px solid var(--border); border-radius: 14px; background: var(--panel-2); padding: 14px; cursor: pointer; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; box-shadow: 0 10px 40px rgba(0,0,0,.35); overflow: hidden; }
+    .widget-card:hover { transform: translateY(-4px) scale(1.02); border-color: #2e3240; box-shadow: 0 20px 60px rgba(0,0,0,.45); }
+    .widget-card.selected { border-color: var(--accent-2); box-shadow: 0 0 0 1px inset rgba(34,211,238,.25), 0 16px 60px rgba(34,211,238,.15); }
+    .widget-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+    .widget-title span { font-weight: 600; }
+    .pill { font-size: 11px; color: #08323a; background: linear-gradient(90deg, var(--accent), var(--accent-2)); padding: 4px 8px; border-radius: 999px; }
+    .preview { height: 140px; border: 1px solid #1a1d24; border-radius: 10px; background: linear-gradient(180deg, #0b0d12, #090a0f); position: relative; overflow: hidden; }
+    .bubble-demo { position: absolute; right: 14px; bottom: 12px; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-3)); box-shadow: 0 0 0 6px rgba(34,211,238,.06); animation: pulse 2.2s infinite; }
+    @keyframes pulse { 0%{ box-shadow: 0 0 0 6px rgba(34,211,238,.06)} 70%{ box-shadow: 0 0 0 16px rgba(34,211,238,.0)} 100%{ box-shadow: 0 0 0 6px rgba(34,211,238,.06)} }
+    .sidebar-demo { position: absolute; right: 0; top: 0; width: 32%; height: 100%; background: #0f1218; border-left: 1px solid #1b1f27; }
+    .dock-demo { position: absolute; left: 0; right: 0; bottom: 0; height: 28%; background: #0f1218; border-top: 1px solid #1b1f27; }
+    .inline-demo { position: absolute; left: 6%; right: 6%; top: 12%; bottom: 12%; border: 1px dashed #222633; border-radius: 12px; }
+
+    .pick-actions { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+    .pick { background: linear-gradient(90deg, var(--accent), var(--accent-2)); color: #041c22; font-weight: 700; border: none; padding: 10px 14px; border-radius: 12px; cursor: pointer; }
+    .next { background: transparent; border: 1px solid var(--border); color: var(--text); padding: 10px 14px; border-radius: 12px; cursor: pointer; }
+
+    /* Upload + Chat */
+    .app { padding: 22px; }
+    .layout { display: grid; grid-template-rows: auto 1fr; gap: 18px; }
+    .upload { padding: 24px; }
+    .dropzone { border: 1px dashed var(--border); border-radius: 14px; background: var(--panel); padding: 28px; text-align: center; color: var(--muted); transition: border-color .2s ease, background .2s ease; }
+    .dropzone.dragover { border-color: var(--accent-2); background: #0f1116; }
+    .dropzone input { display: none; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); color: #00202b; font-weight: 700; padding: 10px 16px; border-radius: 10px; border: none; cursor: pointer; margin-top: 16px; box-shadow: 0 6px 20px rgba(34, 211, 238, .25); }
+
+    .chat { display: grid; grid-template-rows: 1fr auto; gap: 12px; height: min(78vh, 720px); padding: 14px; }
+    .messages { overflow: auto; padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--panel); }
+    .msg-row { display: flex; margin-bottom: 12px; }
+    .msg-row.user { justify-content: flex-end; }
+    .bubble { max-width: min(720px, 92%); padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); white-space: pre-wrap; word-wrap: break-word; }
+    .user .bubble { background: #0c2530; color: #ccf3ff; border-color: #193946; }
+    .assistant .bubble { background: #0f1116; color: var(--text); }
+    .composer { display: flex; gap: 10px; }
+    .composer input[type="text"]{ flex: 1; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); background: #0f1116; color: var(--text); }
+    .send { background: var(--accent-2); color: #00202b; padding: 8px 12px; border-radius: 10px; border: none; font-weight: 700; cursor: pointer; }
+
+    .status { margin-top: 8px; font-size: 12px; color: var(--muted); }
+
+    /* Widget style application */
+    body[data-widget="bubble"] #chat-view.card { position: fixed; right: 22px; bottom: 22px; width: 400px; height: 520px; z-index: 50; }
+    body[data-widget="sidebar"] #chat-view.card { position: fixed; right: 0; top: 0; height: 100vh; width: 380px; border-radius: 0; }
+    body[data-widget="dock"] #chat-view.card { position: fixed; left: 0; right: 0; bottom: 0; height: 44vh; border-radius: 16px 16px 0 0; }
+    body[data-widget="inline"] #chat-view.card { position: static; }
+
+    /* Responsive */
+    @media (max-width: 980px){
+      .landing { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: 1fr 1fr; }
+      body[data-widget="sidebar"] #chat-view.card { width: 88vw; }
+    }
+    @media (max-width: 640px){
+      .grid { grid-template-columns: 1fr; }
+      .landing { padding: 26px; }
+      body[data-widget="bubble"] #chat-view.card { width: calc(100vw - 28px); height: 70vh; right: 14px; left: 14px; }
+    }
+  </style>
+</head>
+<body data-widget="inline">
+  <div class="container">
+    <header>
+      <div class="brand"><span class="logo"></span>Store RAG Assistant</div>
+      <button id="to-app" class="ghost-btn">Open App</button>
+    </header>
+
+    <!-- Landing View -->
+    <section id="landing-view" class="view active card landing">
+      <div>
+        <h1 class="hero-title">Turn shoppers into confident buyers</h1>
+        <div class="hero-sub">Black minimalist showcase • Customer service for e‑commerce</div>
+        <p class="hero-para">
+          This assistant gives each customer personal, in‑the‑moment advice based on their needs, so they choose the right product the first time. No redesigns or complex integrations—just add the widget to your existing site and elevate your customer service instantly. This is a showcase of our product: AI‑powered customer support for e‑commerce that reduces returns and boosts satisfaction.
+        </p>
+        <div class="cta-row">
+          <button id="start-picker" class="cta">Pick your widget</button>
+          <button id="start-app" class="ghost-btn">Skip to app</button>
+        </div>
+      </div>
+      <div class="device">
+        <div class="frame">
+          <div class="glow1"></div>
+          <div class="glow2"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Widget Style Picker -->
+    <section id="picker-view" class="view card picker">
+      <h3>Widget styles</h3>
+      <p>Select a style that matches your site. Hover to preview, click to select. Continue to test with your document.</p>
+      <div class="grid">
+        <div class="widget-card" data-style="bubble">
+          <div class="widget-title"><span>Minimal Bubble</span><span class="pill">Popular</span></div>
+          <div class="preview">
+            <div class="bubble-demo"></div>
+          </div>
+        </div>
+        <div class="widget-card" data-style="sidebar">
+          <div class="widget-title"><span>Docked Sidebar</span></div>
+          <div class="preview">
+            <div class="sidebar-demo"></div>
+          </div>
+        </div>
+        <div class="widget-card" data-style="dock">
+          <div class="widget-title"><span>Bottom Dock</span></div>
+          <div class="preview">
+            <div class="dock-demo"></div>
+          </div>
+        </div>
+        <div class="widget-card" data-style="inline">
+          <div class="widget-title"><span>Inline Assistant</span></div>
+          <div class="preview">
+            <div class="inline-demo"></div>
+          </div>
+        </div>
+      </div>
+      <div class="pick-actions">
+        <button id="confirm-style" class="pick" disabled>Use this style</button>
+        <button id="skip-style" class="next">Skip</button>
+      </div>
+    </section>
+
+    <!-- App (Upload + Chat) -->
+    <section id="app-view" class="view app">
+      <div class="layout">
+        <div id="upload-view" class="card upload">
+          <div id="dropzone" class="dropzone">
+            <h3>Upload a .pdf or .txt</h3>
+            <p class="status" id="upload-status"></p>
+            <input id="file-input" type="file" accept=".pdf,.txt" />
+            <div>
+              <button id="upload-btn" class="btn">Upload</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="chat-view" class="card" style="display:none">
+          <div class="chat">
+            <div id="messages" class="messages"></div>
+            <div class="composer">
+              <input id="prompt" type="text" placeholder="Ask something about your document..." />
+              <button id="send" class="send">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // API base: if opened via file://, default to local server
+    const API_BASE = (location.origin && location.origin.startsWith('http')) ? location.origin : 'http://localhost:8000';
+
+    // Simple navigation
+    const views = ['landing-view','picker-view','app-view'];
+    function goto(id){
+      views.forEach(v => document.getElementById(v).classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    document.getElementById('to-app').onclick = () => goto('app-view');
+    document.getElementById('start-app').onclick = () => goto('app-view');
+    document.getElementById('start-picker').onclick = () => goto('picker-view');
+    document.getElementById('skip-style').onclick = () => goto('app-view');
+
+    // Widget selection
+    let selectedStyle = null;
+    const cards = Array.from(document.querySelectorAll('.widget-card'));
+    const confirmBtn = document.getElementById('confirm-style');
+    cards.forEach(card => {
+      card.addEventListener('click', () => {
+        cards.forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedStyle = card.dataset.style;
+        confirmBtn.disabled = false;
+      });
+      // cute tilt
+      card.addEventListener('mousemove', (e) => {
+        const r = card.getBoundingClientRect();
+        const rx = (e.clientY - r.top) / r.height - .5;
+        const ry = (e.clientX - r.left) / r.width - .5;
+        card.style.transform = `rotateX(${ -rx * 4 }deg) rotateY(${ ry * 6 }deg) translateY(-3px)`;
+      });
+      card.addEventListener('mouseleave', () => {
+        card.style.transform = '';
+      });
+    });
+
+    confirmBtn.addEventListener('click', () => {
+      if (!selectedStyle) return;
+      document.body.setAttribute('data-widget', selectedStyle);
+      goto('app-view');
+    });
+
+    // Drag & drop upload
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('file-input');
+    const uploadBtn = document.getElementById('upload-btn');
+    const uploadStatus = document.getElementById('upload-status');
+
+    dropzone.addEventListener('click', () => fileInput.click());
+    ;['dragenter','dragover'].forEach(evt => dropzone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); dropzone.classList.add('dragover'); }));
+    ;['dragleave','drop'].forEach(evt => dropzone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); dropzone.classList.remove('dragover'); }));
+    dropzone.addEventListener('drop', (e) => { const files = e.dataTransfer.files; if (files && files.length) fileInput.files = files; });
+
+    const state = { sessionId: null, streaming: false };
+
+    uploadBtn.addEventListener('click', async () => {
+      if (!fileInput.files || !fileInput.files[0]) { uploadStatus.textContent = 'Choose a .pdf or .txt file first.'; return; }
+      const fname = (fileInput.files[0].name || '').toLowerCase();
+      if (!(fname.endsWith('.pdf') || fname.endsWith('.txt'))) { uploadStatus.textContent = 'Only PDF or TXT is supported right now.'; return; }
+      uploadBtn.disabled = true; uploadBtn.textContent = 'Uploading...'; uploadStatus.textContent = '';
+      try {
+        const form = new FormData(); form.append('file', fileInput.files[0]);
+        const res = await fetch(`${API_BASE}/upload`, { method: 'POST', body: form });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json(); state.sessionId = data.session_id;
+        document.getElementById('chat-view').style.display = 'block';
+        pushAssistant('Upload successful. Ask me anything about your document.');
+        // If widget = bubble, auto-scroll to bottom where chat is placed fixed
+        if (document.body.getAttribute('data-widget') === 'bubble') {
+          setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 50);
+        }
+      } catch (err) {
+        uploadStatus.textContent = 'Upload failed: ' + (err?.message || err);
+      } finally {
+        uploadBtn.disabled = false; uploadBtn.textContent = 'Upload';
+      }
+    });
+
+    // Chat logic
+    const messagesEl = document.getElementById('messages');
+    const promptEl = document.getElementById('prompt');
+    const sendBtn = document.getElementById('send');
+
+    function pushUser(text){
+      const row = document.createElement('div'); row.className = 'msg-row user';
+      const b = document.createElement('div'); b.className = 'bubble'; b.textContent = text;
+      row.appendChild(b); messagesEl.appendChild(row); messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+    function pushAssistant(text=''){
+      const row = document.createElement('div'); row.className = 'msg-row assistant';
+      const b = document.createElement('div'); b.className = 'bubble'; b.textContent = text;
+      row.appendChild(b); messagesEl.appendChild(row); messagesEl.scrollTop = messagesEl.scrollHeight; return b;
+    }
+
+    async function ask(question){
+      if (!state.sessionId) return;
+      pushUser(question);
+      const bubble = pushAssistant('');
+      sendBtn.disabled = true; promptEl.disabled = true; state.streaming = true;
+      try {
+        const res = await fetch(`${API_BASE}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: state.sessionId, message: question }) });
+        if (!res.ok) throw new Error(await res.text());
+        const reader = res.body.getReader(); const decoder = new TextDecoder(); let acc = '';
+        while (true) {
+          const { value, done } = await reader.read(); if (done) break;
+          acc += decoder.decode(value, { stream: true }); bubble.textContent = acc; messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+      } catch (err) {
+        bubble.textContent += '\n[Error] ' + (err?.message || err);
+      } finally {
+        sendBtn.disabled = false; promptEl.disabled = false; state.streaming = false;
+      }
+    }
+
+    sendBtn.addEventListener('click', () => { const q = promptEl.value.trim(); if (!q) return; promptEl.value=''; ask(q); });
+    promptEl.addEventListener('keydown', (e) => { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendBtn.click(); } });
+  </script>
+</body>
+</html>
